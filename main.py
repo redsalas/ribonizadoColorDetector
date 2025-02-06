@@ -33,21 +33,55 @@ current_colors = CABLE12PINS
 current_roi = CABLE12ROI
 camera_running = True  # Track if the camera is running
 
+
+def reload_configuration():
+    # Reloads configuration from .env and updates global variables.
+    global current_colors, current_roi, TOLERANCE
+
+    # Reload environment variables
+    load_dotenv(override=True)
+
+    # Read from .env
+    cable12pins_str = os.getenv("CABLE12PINS", "[]")
+    cable12roi_str = os.getenv("CABLE12ROI", "[]")
+    cable16pins_str = os.getenv("CABLE16PINS", "[]")
+    cable16roi_str = os.getenv("CABLE16ROI", "[]")
+    TOLERANCE = int(os.getenv("TOLERANCE", "70"))  # Default to 10 if not found
+
+    # Convert JSON strings to Python lists
+    cable12pins = json.loads(cable12pins_str)
+    cable12roi = json.loads(cable12roi_str)
+    cable16pins = json.loads(cable16pins_str)
+    cable16roi = json.loads(cable16roi_str)
+
+    # Update the currently used configuration
+    current_colors = cable12pins  # Default to 12-pin mode
+    current_roi = cable12roi
+
+    print("Configuration reloaded successfully!")
+
 # Function to get the dominant color in an ROI
 def get_dominant_color(frame, roi):
     x, y, w, h = roi
     roi_frame = frame[y:y+h, x:x+w]  # Extract the ROI
-    avg_color = np.mean(roi_frame, axis=(0, 1))  # Calculate the average color
-    return avg_color
+    avg_color = np.mean(roi_frame, axis=(0, 1)).astype(np.uint8)  # Calculate the average color
+    return avg_color  # Returns [B, G, R]
 
-# Function to check if a color is detected in the ROI
+
+# Function to check if a color is within tolerance range
 def detect_color(frame, expected_color, roi):
     global TOLERANCE
     dominant_color = get_dominant_color(frame, roi)
-    # Check if the dominant color is within a tolerance of the expected color
-    lower_bound = np.array(expected_color) - TOLERANCE
-    upper_bound = np.array(expected_color) + TOLERANCE
-    return np.all((dominant_color >= lower_bound) & (dominant_color <= upper_bound))
+
+    # Convert to NumPy arrays for easier computation
+    dominant_color = np.array(dominant_color, dtype=np.int16)
+    expected_color = np.array(expected_color, dtype=np.int16)
+
+    # Compute absolute difference per channel (B, G, R)
+    diff = np.abs(dominant_color - expected_color)
+
+    # Check if all channels are within tolerance range
+    return np.all(diff <= TOLERANCE)
 
 # Function to update the camera feed and color detection
 def update_frame():
@@ -243,6 +277,7 @@ toolbar_frame.pack(fill=tk.X, padx=5, pady=5)
 # Add Play and Stop buttons to the toolbar
 play_icon = ImageTk.PhotoImage(Image.open("play.png").resize((20, 20)))
 stop_icon = ImageTk.PhotoImage(Image.open("stop.png").resize((20, 20)))
+reload_icon = ImageTk.PhotoImage(Image.open("reload.png").resize((20, 20)))
 
 # Create Play Button
 play_button = tk.Button(toolbar_frame, image=play_icon, command=start_camera, borderwidth=0)
@@ -251,6 +286,10 @@ play_button.pack(side=tk.LEFT, padx=5)
 # Create Stop Button
 stop_button = tk.Button(toolbar_frame, image=stop_icon, command=stop_camera, borderwidth=0)
 stop_button.pack(side=tk.LEFT, padx=5)
+
+# Create Reload Button
+reload_button = tk.Button(toolbar_frame, image=reload_icon, command=reload_configuration, borderwidth=0)
+reload_button.pack(side=tk.LEFT, padx=5)
 
 # Camera feed section
 camera_frame = tk.Frame(root, width=640, height=480)
