@@ -55,7 +55,6 @@ def save_results_to_env():
     # Prepare the CABLE12ROI variable
     cable_rois = [[pin12names[i], roi] for i, roi in enumerate(rois)]
     # Write the variables to the .env file using double quotes
-    set_key(".env", "CABLE12PINS", json.dumps(cable_pins))
     set_key(".env", "CABLE12ROI", json.dumps(cable_rois))
     print("Results saved to .env file.")
 

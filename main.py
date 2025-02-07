@@ -14,29 +14,22 @@ from tkinter import filedialog, messagebox
 
 from settings import SettingsForm
 
-# Load color configurations from environment variables
-load_dotenv()
-cable12pins_str = os.getenv("CABLE12PINS")
-cable12roi_str = os.getenv("CABLE12ROI")
-cable16pins_str = os.getenv("CABLE16PINS")
-cable16roi_str = os.getenv("CABLE16ROI")
-
-CABLE12PINS = json.loads(cable12pins_str)
-CABLE12ROI = json.loads(cable12roi_str)
-CABLE16PINS = json.loads(cable16pins_str)
-CABLE16ROI = json.loads(cable16roi_str)
-TOLERANCE = int(os.getenv("TOLERANCE"))
-
-# Global variable for the camera
+# Global variables
 cap = None
-current_colors = CABLE12PINS
-current_roi = CABLE12ROI
-camera_running = True  # Track if the camera is running
+current_colors = []
+current_roi = []
+CABLE12PINS = []
+CABLE12ROI = []
+CABLE16PINS = []
+CABLE16ROI = []
+color_labels = []
+camera_running = True
+TOLERANCE = 10  # Default tolerance in case .env is not loaded properly
 
 
 def reload_configuration():
     # Reloads configuration from .env and updates global variables.
-    global current_colors, current_roi, TOLERANCE
+    global current_colors, current_roi, TOLERANCE, CABLE12PINS, CABLE12ROI, CABLE16PINS, CABLE16ROI
 
     # Reload environment variables
     load_dotenv(override=True)
@@ -46,19 +39,18 @@ def reload_configuration():
     cable12roi_str = os.getenv("CABLE12ROI", "[]")
     cable16pins_str = os.getenv("CABLE16PINS", "[]")
     cable16roi_str = os.getenv("CABLE16ROI", "[]")
-    TOLERANCE = int(os.getenv("TOLERANCE", "70"))  # Default to 10 if not found
+    TOLERANCE = int(os.getenv("TOLERANCE", "10"))  # Default to 10 if not found
 
     # Convert JSON strings to Python lists
-    cable12pins = json.loads(cable12pins_str)
-    cable12roi = json.loads(cable12roi_str)
-    cable16pins = json.loads(cable16pins_str)
-    cable16roi = json.loads(cable16roi_str)
-
-    # Update the currently used configuration
-    current_colors = cable12pins  # Default to 12-pin mode
-    current_roi = cable12roi
+    CABLE12PINS = json.loads(cable12pins_str)
+    CABLE12ROI = json.loads(cable12roi_str)
+    CABLE16PINS = json.loads(cable16pins_str)
+    CABLE16ROI = json.loads(cable16roi_str)
 
     print("Configuration reloaded successfully!")
+
+    # Update the UI with new color labels
+    update_color_list("12pins")  # Default to 12-pin mode after reloading
 
 # Function to get the dominant color in an ROI
 def get_dominant_color(frame, roi):
@@ -72,6 +64,8 @@ def get_dominant_color(frame, roi):
 def detect_color(frame, expected_color, roi):
     global TOLERANCE
     dominant_color = get_dominant_color(frame, roi)
+    print("expected color: ", expected_color)
+    print("dominant_color: ", dominant_color)
 
     # Convert to NumPy arrays for easier computation
     dominant_color = np.array(dominant_color, dtype=np.int16)
@@ -155,7 +149,51 @@ def import_env_file():
         except Exception as e:
             messagebox.showerror("Error", f"Failed to import configuration: {str(e)}")
 
-# Function to run the color detector module in a separate thread
+# Function to run the color or ROI detector module in a separate thread
+def run_roi_detector_12():
+    global cap
+
+    # Release the camera in the main application
+    if cap is not None:
+        cap.release()
+        cap = None
+
+    # Start the color detector in a separate thread
+    def target():
+        import roi_detector_12pin  # Import the color detector module
+        roi_detector_12pin  # Call the main function of the color detector module
+
+        # Reinitialize the camera in the main application after the detector is closed
+        global cap
+        if cap is None:
+            cap = cv2.VideoCapture(0)
+
+    detector_thread = threading.Thread(target=target)
+    detector_thread.daemon = True  # Daemonize the thread so it exits when the main program exits
+    detector_thread.start()
+
+def run_roi_detector_16():
+    global cap
+
+    # Release the camera in the main application
+    if cap is not None:
+        cap.release()
+        cap = None
+
+    # Start the color detector in a separate thread
+    def target():
+        import roi_detector_16pin  # Import the color detector module
+        roi_detector_16pin  # Call the main function of the color detector module
+
+        # Reinitialize the camera in the main application after the detector is closed
+        global cap
+        if cap is None:
+            cap = cv2.VideoCapture(0)
+
+    detector_thread = threading.Thread(target=target)
+    detector_thread.daemon = True  # Daemonize the thread so it exits when the main program exits
+    detector_thread.start()
+
 def run_color_detector_12():
     global cap
 
@@ -202,14 +240,14 @@ def run_color_detector_16():
 
 # Function to update the color list based on the selected configuration
 def update_color_list(config):
-    global current_colors, color_labels, current_roi
+    global current_colors, current_roi, color_labels
 
     # Clear existing labels
     for label in color_labels:
-        label.pack_forget()
-    color_labels.clear()
+        label.destroy()  # Properly remove old labels
+    color_labels.clear()  # Empty the list
 
-    # Update the current colors
+    # Update the current colors based on selection
     if config == "12pins":
         current_colors = CABLE12PINS
         current_roi = CABLE12ROI
@@ -218,8 +256,8 @@ def update_color_list(config):
         current_roi = CABLE16ROI
 
     # Create new labels for the updated color list
-    for color_name, _ in current_colors:
-        label = tk.Label(color_frame, text=color_name, image=red_icon, compound=tk.LEFT, fg="red")
+    for pin_name, _ in current_colors:
+        label = tk.Label(color_frame, text=pin_name, image=red_icon, compound=tk.LEFT, fg="red")
         label.pack(anchor=tk.W, pady=2)
         color_labels.append(label)
 
@@ -267,8 +305,10 @@ config_menu.add_command(label="16-Pin Cable", command=lambda: update_color_list(
 # Color detection menu
 color_detection_menu = tk.Menu(toolbar, tearoff=0)
 toolbar.add_cascade(label="Color Configuration", menu=color_detection_menu)
-color_detection_menu.add_command(label="Detect Color 12", command=run_color_detector_12)
-color_detection_menu.add_command(label="Detect Color 16", command=run_color_detector_16)
+color_detection_menu.add_command(label="Detect ROI 12-Pin", command=run_roi_detector_12)
+color_detection_menu.add_command(label="Detect ROI 16-Pin", command=run_roi_detector_16)
+color_detection_menu.add_command(label="Detect Color 12-Pin", command=run_color_detector_12)
+color_detection_menu.add_command(label="Detect Color 16-Pin", command=run_color_detector_16)
 
 # Create a toolbar frame (instead of tk.Menu)
 toolbar_frame = tk.Frame(root)
@@ -311,11 +351,14 @@ green_icon = ImageTk.PhotoImage(Image.open("green_icon.png").resize((20, 20)))
 red_icon = ImageTk.PhotoImage(Image.open("red_icon.png").resize((20, 20)))
 
 # Initialize color labels
+reload_configuration()
+'''
 color_labels = []
 for pin_name, _ in CABLE12PINS:
     label = tk.Label(color_frame, text=pin_name, image=red_icon, compound=tk.LEFT, fg="red")
     label.pack(anchor=tk.W, pady=2)
     color_labels.append(label)
+'''
 
 # Initialize camera
 cap = cv2.VideoCapture(0)

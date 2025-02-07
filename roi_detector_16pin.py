@@ -6,13 +6,13 @@ import json
 
 # Load environment variables from .env file
 load_dotenv()
-pin12names = json.loads(os.getenv("PIN12NAMES", "[]"))
+pin16names = json.loads(os.getenv("PIN16NAMES", "[]"))
 
 # Global variables
 clicked_points = []  # Stores clicked points
 detected_colors = []  # Stores detected colors
 rois = []  # Stores ROIs
-num_pins = 12  # Default to 12 pins
+num_pins = 16  # Default to 12 pins
 current_pin = 0  # Tracks the current pin being configured
 
 # Define the header height (adjust based on your text size)
@@ -49,14 +49,13 @@ def get_clicked_point(event, x, y, flags, param):
 
 # Function to save the results to the .env file
 def save_results_to_env():
-    global detected_colors, rois, pin12names
-    # Prepare the CABLE12PINS variable
-    cable_pins = [[pin12names[i], color] for i, color in enumerate(detected_colors)]
-    # Prepare the CABLE12ROI variable
-    cable_rois = [[pin12names[i], roi] for i, roi in enumerate(rois)]
+    global detected_colors, rois, pin16names
+    # Prepare the CABLE16PINS variable
+    cable_pins = [[pin16names[i], color] for i, color in enumerate(detected_colors)]
+    # Prepare the CABLE16ROI variable
+    cable_rois = [[pin16names[i], roi] for i, roi in enumerate(rois)]
     # Write the variables to the .env file using double quotes
-    set_key(".env", "CABLE12PINS", json.dumps(cable_pins))
-    set_key(".env", "CABLE12ROI", json.dumps(cable_rois))
+    set_key(".env", "CABLE16ROI", json.dumps(cable_rois))
     print("Results saved to .env file.")
 
 # Function to display all ROIs and RGB values on the screen

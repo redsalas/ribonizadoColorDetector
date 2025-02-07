@@ -15,32 +15,44 @@ rois = []  # Stores ROIs
 num_pins = 16  # Default to 12 pins
 current_pin = 0  # Tracks the current pin being configured
 
+# Define the header height (adjust based on your text size)
+HEADER_HEIGHT = 40  # Adjust this value based on the text size
+
 # Mouse callback function to get the clicked point and define the ROI
 def get_clicked_point(event, x, y, flags, param):
     global clicked_points, detected_colors, rois, current_pin
     if event == cv2.EVENT_LBUTTONDOWN and current_pin < num_pins:
-        clicked_points.append((x, y))
-        # Define the ROI as a 30*65 area around the clicked point
-        roi = (x - 25, y - 25, 30, 65)  # (x, y, width, height)
+        adjusted_y = y - HEADER_HEIGHT  # Adjust for header height
+
+        if adjusted_y < 0:  # Prevent out-of-frame issues
+            return
+
+        clicked_points.append((x, adjusted_y))
+
+        # Define the ROI as a 80*20 area around the clicked point
+        roi = (x - 40, adjusted_y - 10, 80, 20)  # Adjusted ROI
         rois.append(roi)
+
         # Get the color of the clicked pixel
-        detected_color = frame[y, x].tolist()
+        detected_color = frame[adjusted_y, x].tolist()
         detected_colors.append(detected_color)
+
         print(f"Pin {current_pin + 1}: Detected Color (BGR): {detected_color}, ROI: {roi}")
+
         current_pin += 1
 
-        # If all pins are configured, save the results to .env and display them
+        # If all pins are configured, save results
         if current_pin == num_pins:
-            print("All pins configured. Saving results to .env file...")
+            print("All pins configured. Saving results...")
             save_results_to_env()
             display_results()
 
 # Function to save the results to the .env file
 def save_results_to_env():
     global detected_colors, rois, pin16names
-    # Prepare the CABLE12PINS variable
+    # Prepare the CABLE16PINS variable
     cable_pins = [[pin16names[i], color] for i, color in enumerate(detected_colors)]
-    # Prepare the CABLE12ROI variable
+    # Prepare the CABLE16ROI variable
     cable_rois = [[pin16names[i], roi] for i, roi in enumerate(rois)]
     # Write the variables to the .env file using double quotes
     set_key(".env", "CABLE16PINS", json.dumps(cable_pins))
@@ -76,40 +88,51 @@ while True:
     if not ret:
         break
 
-    # Add the legend at the top of the frame with a black background
+    # Define the header height
+    header_height = 40
+    frame_width = frame.shape[1]
+
+    # Create a black header (same width as the frame)
+    header = np.zeros((header_height, frame_width, 3), dtype=np.uint8)
+
+    # Set legend text
     if current_pin < num_pins:
         legend_text = f"Setting Pin {current_pin + 1}, click in the selected area to store the area and color."
     else:
         legend_text = "All pins configured. Press 'q' to quit."
+
+    # Calculate text position
     text_size = cv2.getTextSize(legend_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
-    text_x = (frame.shape[1] - text_size[0]) // 2  # Center the text horizontally
-    # Draw a black rectangle as the background for the text
-    cv2.rectangle(frame, (text_x - 5, 10), (text_x + text_size[0] + 5, 10 + text_size[1] + 10), (0, 0, 0), -1)
-    # Display the text
-    cv2.putText(frame, legend_text, (text_x, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    text_x = (frame_width - text_size[0]) // 2  # Center the text horizontally
+    text_y = header_height - 10  # Adjust vertical position within the header
+
+    # Display text on the black header
+    cv2.putText(header, legend_text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    # Stack the header on top of the camera frame
+    combined_frame = np.vstack((header, frame))
 
     # Display the ROI for each pin as it is clicked
     for i, roi in enumerate(rois):
         x, y, w, h = roi
-        # Draw the ROI on the frame
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        # Display the pin number
+        y += header_height  # Adjust for the header
+        cv2.rectangle(combined_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         pin_text = f"Pin {i + 1}"
-        cv2.putText(frame, pin_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(combined_frame, pin_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
     # If all pins are configured, display the results
     if current_pin == num_pins:
         display_results()
 
-    # Display the frame
-    cv2.imshow("Camera Feed", frame)
+    # Show the new frame with the header
+    cv2.imshow("Camera Feed", combined_frame)
 
     # Check if the window is closed
     if cv2.getWindowProperty("Camera Feed", cv2.WND_PROP_VISIBLE) < 1:
         break
 
-    # Break the loop if 'q' is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # Break the loop if 'q' or 'Q' is pressed
+    if cv2.waitKey(1) & 0xFF in [ord('q'), ord('Q')]:
         break
 
 # Release the camera and close the window
