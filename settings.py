@@ -11,22 +11,22 @@ dotenv.load_dotenv()
 class SettingsForm(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("Settings Form")
+        self.title("Propiedades")
         self.geometry("600x400")  # Increased width for color picker
 
         # Load settings
         self.tolerance, self.pin12data, self.pin16data = self.load_settings()
 
         # Tolerance Field
-        tk.Label(self, text="Tolerance:").pack()
+        tk.Label(self, text="Tolerancia:").pack()
         self.tolerance_var = tk.IntVar(value=self.tolerance)
         tk.Entry(self, textvariable=self.tolerance_var).pack()
 
         # Pin Selection Combo Box
-        tk.Label(self, text="Select Pin Configuration:").pack()
-        self.pin_option_var = tk.StringVar(value="12 Pin Names")
+        tk.Label(self, text="Selecciona tipo de cable:").pack()
+        self.pin_option_var = tk.StringVar(value="12-Pin")
         self.pin_combobox = ttk.Combobox(self, textvariable=self.pin_option_var,
-                                         values=["12 Pin Names", "16 Pin Names"])
+                                         values=["12-Pin", "16-Pin"])
         self.pin_combobox.pack()
         self.pin_combobox.bind("<<ComboboxSelected>>", self.update_pin_fields)
 
@@ -35,7 +35,7 @@ class SettingsForm(tk.Toplevel):
         self.pin_frame.pack()
 
         # Save Button
-        self.save_button = tk.Button(self, text="Save Settings", command=self.save_settings)
+        self.save_button = tk.Button(self, text="Guardar Propiedades", command=self.save_settings)
         self.save_button.pack()
 
         # Status Label
@@ -46,14 +46,14 @@ class SettingsForm(tk.Toplevel):
         self.update_pin_fields()
 
     def load_settings(self):
-        """Load settings from .env file"""
+        # Load settings from .env file
         tolerance = int(os.getenv("TOLERANCE", "0"))
         pin12data = json.loads(os.getenv("CABLE12PINS", "[]"))
         pin16data = json.loads(os.getenv("CABLE16PINS", "[]"))
         return tolerance, pin12data, pin16data
 
     def save_settings(self):
-        """Save settings to .env file"""
+        # Save settings to .env file
         tolerance = self.tolerance_var.get()
         pin_data = []
 
@@ -64,20 +64,20 @@ class SettingsForm(tk.Toplevel):
 
         pin_data_str = json.dumps(pin_data)
 
-        if self.pin_option_var.get() == "12 Pin Names":
+        if self.pin_option_var.get() == "12-Pin":
             dotenv.set_key(".env", "CABLE12PINS", pin_data_str)
         else:
             dotenv.set_key(".env", "CABLE16PINS", pin_data_str)
 
         dotenv.set_key(".env", "TOLERANCE", str(tolerance))
-        self.status_label.config(text="Settings Saved Successfully!", fg="green")
+        self.status_label.config(text="Cambios guardados exitosamente!", fg="green")
 
     def update_pin_fields(self, *args):
-        """Update the number of fields dynamically based on selection"""
+        # Update the number of fields dynamically based on selection
         for widget in self.pin_frame.winfo_children():
             widget.destroy()
 
-        pin_count = 12 if self.pin_option_var.get() == "12 Pin Names" else 16
+        pin_count = 12 if self.pin_option_var.get() == "12-Pin" else 16
         pin_data = self.pin12data if pin_count == 12 else self.pin16data
 
         self.pin_entries = []
@@ -93,7 +93,7 @@ class SettingsForm(tk.Toplevel):
             entry.grid(row=row, column=col * 3 + 1, padx=5, pady=2)
             self.pin_entries.append(entry)
 
-            color_button = tk.Button(self.pin_frame, text="Pick Color",
+            color_button = tk.Button(self.pin_frame, text="Pin Color",
                                      command=lambda idx=i: self.pick_color(idx))
             color_button.grid(row=row, column=col * 3 + 2, padx=5, pady=2)
 
@@ -102,7 +102,7 @@ class SettingsForm(tk.Toplevel):
             color_button.config(bg=self.rgb_to_hex(default_color))
 
     def pick_color(self, idx):
-        """Open a color picker and update the button color"""
+        # Open a color picker and update the button color
         color_code = colorchooser.askcolor(title="Choose Color")[0]
         if color_code:
             rgb_color = [int(c) for c in color_code]
@@ -111,11 +111,10 @@ class SettingsForm(tk.Toplevel):
 
     @staticmethod
     def rgb_to_hex(rgb):
-        """Convert an RGB tuple to a hex color string"""
+        # Convert an RGB tuple to a hex color string
         return "#%02x%02x%02x" % tuple(rgb)
 
-
-# Example usage: Open the settings form in a new window from another part of the application
+# Open the settings form in a new window from another part of the application
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()  # Hide the main window

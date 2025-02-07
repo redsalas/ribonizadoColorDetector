@@ -76,10 +76,10 @@ def display_results():
 cap = cv2.VideoCapture(0)
 
 # Create a named window and set the mouse callback
-cv2.namedWindow("Camera Feed")
-cv2.setMouseCallback("Camera Feed", get_clicked_point)
+cv2.namedWindow("Lectura de Video - Configurar")
+cv2.setMouseCallback("Lectura de Video - Configurar", get_clicked_point)
 
-print("Click on the camera feed to define ROIs for each pin. Press 'q' to quit.")
+print("Click on the Lectura de Video - Configurar to define ROIs for each pin. Press 'q' to quit.")
 
 while True:
     # Capture frame-by-frame
@@ -96,9 +96,9 @@ while True:
 
     # Set legend text
     if current_pin < num_pins:
-        legend_text = f"Setting Pin {current_pin + 1}, click in the selected area to store the area and color."
+        legend_text = f"Pin {current_pin + 1}, click para guardar el area"
     else:
-        legend_text = "All pins configured. Press 'q' to quit."
+        legend_text = "Pines configurados. Presione 'q' para salir."
 
     # Calculate text position
     text_size = cv2.getTextSize(legend_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
@@ -124,10 +124,10 @@ while True:
         display_results()
 
     # Show the new frame with the header
-    cv2.imshow("Camera Feed", combined_frame)
+    cv2.imshow("Lectura de Video - Configurar", combined_frame)
 
     # Check if the window is closed
-    if cv2.getWindowProperty("Camera Feed", cv2.WND_PROP_VISIBLE) < 1:
+    if cv2.getWindowProperty("Lectura de Video - Configurar", cv2.WND_PROP_VISIBLE) < 1:
         break
 
     # Break the loop if 'q' or 'Q' is pressed

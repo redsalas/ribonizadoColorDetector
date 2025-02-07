@@ -24,7 +24,7 @@ CABLE16PINS = []
 CABLE16ROI = []
 color_labels = []
 camera_running = True
-TOLERANCE = 10  # Default tolerance in case .env is not loaded properly
+TOLERANCE = 70  # Default tolerance in case .env is not loaded properly
 
 
 def reload_configuration():
@@ -39,7 +39,7 @@ def reload_configuration():
     cable12roi_str = os.getenv("CABLE12ROI", "[]")
     cable16pins_str = os.getenv("CABLE16PINS", "[]")
     cable16roi_str = os.getenv("CABLE16ROI", "[]")
-    TOLERANCE = int(os.getenv("TOLERANCE", "10"))  # Default to 10 if not found
+    TOLERANCE = int(os.getenv("TOLERANCE", "70"))  # Default to 70 if not found
 
     # Convert JSON strings to Python lists
     CABLE12PINS = json.loads(cable12pins_str)
@@ -47,7 +47,7 @@ def reload_configuration():
     CABLE16PINS = json.loads(cable16pins_str)
     CABLE16ROI = json.loads(cable16roi_str)
 
-    print("Configuration reloaded successfully!")
+    print("Configuration loaded successfully!")
 
     # Update the UI with new color labels
     update_color_list("12pins")  # Default to 12-pin mode after reloading
@@ -107,9 +107,9 @@ def update_frame():
 
             # Update the result label based on whether all pins are green
             if all_green:
-                result_label.config(text="Result: OK", fg="green")
+                result_label.config(text="Resultado: BIEN", fg="green")
             else:
-                result_label.config(text="Result: NOT OK", fg="red")
+                result_label.config(text="Resultado: MAL", fg="red")
 
     if camera_running:
         camera_label.after(10, update_frame)
@@ -144,10 +144,10 @@ def import_env_file():
     if file_path:  # If the user selected a file
         try:
             shutil.copy(file_path, ".env")  # Overwrite the current .env file
-            messagebox.showinfo("Success", "Configuration imported successfully. Restart the application to see the new configuration.")
+            messagebox.showinfo("Success", "Propiedades importadas exitosamente. Presione el botón de reinicio para cargar los cambios")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to import configuration: {str(e)}")
+            messagebox.showerror("Error", f"Fallo al importar propiedadesn: {str(e)}")
 
 # Function to run the color or ROI detector module in a separate thread
 def run_roi_detector_12():
@@ -283,7 +283,7 @@ def stop_camera():
 
 # Initialize the main window
 root = tk.Tk()
-root.title("Color Detection App")
+root.title("Inspector de Ribonizado")
 
 # Toolbar
 toolbar = tk.Menu(root)
@@ -291,24 +291,24 @@ root.config(menu=toolbar)
 
 # Properties menu
 properties_menu = tk.Menu(toolbar, tearoff=0)
-toolbar.add_cascade(label="Properties", menu=properties_menu)
-properties_menu.add_command(label="Settings", command=show_properties)
-properties_menu.add_command(label="Export Settings", command=export_env_file)
-properties_menu.add_command(label="Import .env", command=import_env_file)
+toolbar.add_cascade(label="Configuración", menu=properties_menu)
+properties_menu.add_command(label="Propiedades", command=show_properties)
+properties_menu.add_command(label="Exportar Propiedades", command=export_env_file)
+properties_menu.add_command(label="Importar .env", command=import_env_file)
 
 # Configuration menu
 config_menu = tk.Menu(toolbar, tearoff=0)
-toolbar.add_cascade(label="Configuration", menu=config_menu)
+toolbar.add_cascade(label="Tipo de Cable", menu=config_menu)
 config_menu.add_command(label="12-Pin Cable", command=lambda: update_color_list("12pins"))
 config_menu.add_command(label="16-Pin Cable", command=lambda: update_color_list("16pins"))
 
 # Color detection menu
 color_detection_menu = tk.Menu(toolbar, tearoff=0)
-toolbar.add_cascade(label="Color Configuration", menu=color_detection_menu)
-color_detection_menu.add_command(label="Detect ROI 12-Pin", command=run_roi_detector_12)
-color_detection_menu.add_command(label="Detect ROI 16-Pin", command=run_roi_detector_16)
-color_detection_menu.add_command(label="Detect Color 12-Pin", command=run_color_detector_12)
-color_detection_menu.add_command(label="Detect Color 16-Pin", command=run_color_detector_16)
+toolbar.add_cascade(label="Configurar Detector", menu=color_detection_menu)
+color_detection_menu.add_command(label="Detectar ROI 12-Pin", command=run_roi_detector_12)
+color_detection_menu.add_command(label="Detectar ROI 16-Pin", command=run_roi_detector_16)
+color_detection_menu.add_command(label="Detectar Color 12-Pin", command=run_color_detector_12)
+color_detection_menu.add_command(label="Detectar Color 16-Pin", command=run_color_detector_16)
 
 # Create a toolbar frame (instead of tk.Menu)
 toolbar_frame = tk.Frame(root)
@@ -343,7 +343,7 @@ color_frame = tk.Frame(root, width=200, height=480)
 color_frame.pack(side=tk.RIGHT, padx=10, pady=10)
 
 # Add a result label above the pins
-result_label = tk.Label(color_frame, text="Result: ", font=("Arial", 12, "bold"))
+result_label = tk.Label(color_frame, text="Resultado: ", font=("Arial", 12, "bold"))
 result_label.pack(anchor=tk.W, pady=10)
 
 # Load icons
